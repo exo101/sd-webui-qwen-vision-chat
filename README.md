@@ -85,13 +85,8 @@ ollama pull deepseek-r1:8b
 
 ### 步骤 3：安装插件依赖
 
-方法一：使用 requirements.txt（如果有）
-```bash
-cd d:\sd-webui-forge-aki-v5.4
-python -m pip install -r extensions\sd-webui-qwen-vision-chat\requirements.txt
-```
 
-方法二：手动安装（目前无需额外依赖）
+手动安装（目前无需额外依赖）
 ```bash
 # 本插件主要依赖 Ollama API，无需额外 Python 库
 # 确保 Ollama 服务正常运行即可
