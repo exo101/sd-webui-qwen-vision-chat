@@ -88,10 +88,10 @@ def vision_chat_tab():
                                 info="视觉模型支持图片识别和纯文本聊天，语言模型仅支持文本对话"
                             )
                             
-                            vision_model = gr.Dropdown(
+                          vision_model = gr.Dropdown(
                                 label="视觉模型",
-                                choices=["qwen3.5:9b", "qwen3.5:4b", "qwen3-vl:8b", "qwen3-vl:4b", "qwen3.5-abliterated:4B，huihui_ai/qwen3.5-abliterated:9b"],
-                                value="qwen3.5:9b",
+                                choices=["qwen3.5:9b", "qwen3.5:4b", "qwen3-vl:8b", "qwen3-vl:4b", "qwen3.5-abliterated:4B", "huihui_ai/qwen3.5-abliterated:9b"],
+                                value="qwen3.5:4b",
                                 interactive=True,
                                 info="选择视觉模型（支持图片识别 + 文本聊天）",
                                 scale=2,
