@@ -90,7 +90,7 @@ def vision_chat_tab():
                             
                             vision_model = gr.Dropdown(
                                 label="视觉模型",
-                                choices=["qwen3.5:9b", "qwen3.5:4b", "qwen3-vl:8b", "qwen3-vl:4b", "qwen3-vl:2b"],
+                                choices=["qwen3.5:9b", "qwen3.5:4b", "qwen3-vl:8b", "qwen3-vl:4b", "qwen3.5-abliterated:4B，huihui_ai/qwen3.5-abliterated:9b"],
                                 value="qwen3.5:9b",
                                 interactive=True,
                                 info="选择视觉模型（支持图片识别 + 文本聊天）",
@@ -101,7 +101,7 @@ def vision_chat_tab():
                             
                             language_model = gr.Dropdown(
                                 label="语言模型",
-                                choices=["qwen3:latest", "qwen3.5:4b", "deepseek-r1:8b"],
+                                choices=["qwen3:latest", "qwen3.5:4b", "qwen3.5:9b"],
                                 value="qwen3:latest",
                                 interactive=False,
                                 info="选择语言模型",
@@ -468,7 +468,6 @@ def on_app_started(*args, **kwargs):
     print("- 关键词辅助模板（表情包/故事/分镜）")
     print("- 标签管理（批量添加/删除关键词）")
     print("- 图像管理（图片预览与管理）")
-    print("- 资源汇总与公告")
     print()
     print("前置要求：")
     print("- 需要安装 Ollama 并下载 Qwen 系列模型")
