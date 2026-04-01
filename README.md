@@ -53,12 +53,6 @@
 
 ## 安装说明
 
-### 前置要求
-- ✅ Stable Diffusion WebUI Forge v5.4 或更高版本
-- ✅ Python 3.10+
-- ✅ Ollama（必须）
-- ✅ Qwen 系列模型
-
 ### 步骤 1：安装 Ollama
 
 1. 访问官网下载：https://ollama.com/
@@ -68,7 +62,7 @@
 
 根据需求选择合适的模型：
 
-```bash
+```
 # 视觉模型（支持图片识别）
 ollama run qwen3.5:9b    # 高精度版（推荐 16GB+ 显存）
 ollama run qwen3.5:4b    # 平衡版（推荐 12GB 显存）
@@ -79,7 +73,7 @@ ollama run qwen3-vl:2b   # 轻量版（推荐 8GB 显存）
 # 语言模型（仅文本对话）
 ollama run qwen3:latest
 ollama run qwen3.5:4b
-ollama run deepseek-r1:8b
+
 ```
 
 ### 步骤 3：安装插件依赖
