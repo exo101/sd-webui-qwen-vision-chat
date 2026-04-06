@@ -1,4 +1,6 @@
 import gradio as gr
+import numpy as np
+import shutil
 from modules import script_callbacks
 from pathlib import Path
 import sys
@@ -39,7 +41,7 @@ def vision_chat_tab():
     with gr.Blocks(analytics_enabled=False) as ui:
         with gr.Tabs():
             # 图像识别与语言交互标签页
-            with gr.TabItem("2 图像识别与语言交互"):
+            with gr.TabItem("2 图像识别与关键词辅助"):
                 with gr.Row():
                     # 左侧区域：标签管理、图像管理、模型选择
                     with gr.Column(scale=1):
@@ -222,6 +224,47 @@ def vision_chat_tab():
                                 quick_description_buttons = create_quick_description(chat_message)
                             else:
                                 quick_description_buttons = {}
+                        
+                        # 批量识别生成标签区域
+                        with gr.Accordion("批量识别生成标签", open=False):
+                            gr.Markdown("### 批量处理图片并生成标签文件")
+                            
+                            # 获取插件目录路径
+                            import os
+                            from pathlib import Path
+                            extension_dir = Path(__file__).parent.parent
+                            default_image_dir = str(extension_dir / "images")
+                            
+                            # 创建默认目录
+                            os.makedirs(default_image_dir, exist_ok=True)
+                            
+                            batch_image_dir = gr.Textbox(
+                                label="图片目录路径",
+                                value=default_image_dir,
+                                placeholder="输入包含图片的文件夹路径",
+                                container=True
+                            )
+                            
+                            batch_tag_prompt = gr.Textbox(
+                                label="标签生成提示词",
+                                value="请识别图片内容，生成详细的标签，使用逗号分隔，不要包含任何解释性文字",
+                                placeholder="输入用于生成标签的提示词",
+                                lines=2,
+                                container=True
+                            )
+                            
+                            batch_start_btn = gr.Button(
+                                "开始批量识别",
+                                size="lg",
+                                variant="primary",
+                                elem_classes="orange-button"
+                            )
+                            
+                            batch_result = gr.Textbox(
+                                label="批量处理结果",
+                                lines=5,
+                                container=True
+                            )
                 
                 # 添加 Ollama API 配置
                 with gr.Accordion("⚙️ Ollama API 配置", open=False):
@@ -285,7 +328,21 @@ def vision_chat_tab():
                     print(f"multi_images_input: {multi_images_input}")
                     print(f"model_type: {model_type}")
                     
-                    if not message and not image_input and not multi_images_input:
+                    # 检查是否有输入
+                    has_input = False
+                    if message:
+                        has_input = True
+                    if image_input is not None:
+                        # 处理 numpy 数组的情况
+                        if isinstance(image_input, np.ndarray):
+                            if image_input.size > 0:
+                                has_input = True
+                        else:
+                            has_input = True
+                    if multi_images_input and len(multi_images_input) > 0:
+                        has_input = True
+                    
+                    if not has_input:
                         return "", chat_history
                     
                     # 判断是否有图片
@@ -391,6 +448,34 @@ def vision_chat_tab():
                     if chat_history and chat_history[-1][0] == user_message:
                         chat_history[-1] = (user_message, ai_response)
                     
+                    # 为批量上传的图片生成标签文件
+                    if upload_method == "batch" and multi_images_input:
+                        # 获取插件目录路径
+                        extension_dir = Path(__file__).parent.parent
+                        images_dir = os.path.join(extension_dir, "images")
+                        os.makedirs(images_dir, exist_ok=True)
+                        
+                        for image_path in temp_image_paths:
+                            try:
+                                # 获取原始文件名
+                                original_filename = os.path.basename(image_path)
+                                
+                                # 复制图片到插件目录
+                                dest_image_path = os.path.join(images_dir, original_filename)
+                                shutil.copy2(image_path, dest_image_path)
+                                
+                                # 生成标签文件路径（保存在插件目录，使用相同的文件名）
+                                txt_file_path = os.path.splitext(dest_image_path)[0] + ".txt"
+                                
+                                # 保存标签到文件
+                                os.makedirs(os.path.dirname(txt_file_path), exist_ok=True)
+                                with open(txt_file_path, 'w', encoding='utf-8') as f:
+                                    f.write(ai_response)
+                                print(f"✅ 已生成标签文件: {txt_file_path}")
+                                print(f"✅ 已保存图片: {dest_image_path}")
+                            except Exception as e:
+                                print(f"❌ 生成标签文件失败: {str(e)}")
+                    
                     # 清理临时文件
                     for temp_path in temp_image_paths:
                         try:
@@ -401,6 +486,67 @@ def vision_chat_tab():
                     
                     return "", chat_history
                 
+                def batch_process_images(image_dir, tag_prompt, vision_model, ollama_host, ollama_timeout):
+                    """批量处理图片并生成标签文件"""
+                    if not image_dir or not os.path.isdir(image_dir):
+                        return "错误：请提供有效的图片目录路径"
+                    
+                    if not OLLAMA_AVAILABLE:
+                        return "错误：Ollama API 模块不可用，请检查安装"
+                    
+                    # 支持的图片格式
+                    supported_extensions = [".png", ".jpg", ".jpeg", ".webp", ".bmp", ".tiff"]
+                    
+                    # 获取所有图片文件
+                    image_files = []
+                    for file_name in os.listdir(image_dir):
+                        file_path = os.path.join(image_dir, file_name)
+                        if os.path.isfile(file_path):
+                            ext = os.path.splitext(file_name)[1].lower()
+                            if ext in supported_extensions:
+                                image_files.append(file_path)
+                    
+                    if not image_files:
+                        return "错误：指定目录中没有找到支持的图片文件"
+                    
+                    # 处理结果
+                    results = []
+                    success_count = 0
+                    failed_count = 0
+                    
+                    # 处理每张图片
+                    for image_path in image_files:
+                        try:
+                            # 生成标签文件路径（保存在图片同目录，使用相同的文件名）
+                            txt_file_path = os.path.splitext(image_path)[0] + ".txt"
+                            
+                            # 调用视觉模型生成标签
+                            print(f"正在处理: {os.path.basename(image_path)}")
+                            tags = get_response_lvm_ollama_api(
+                                input_model_name=vision_model,
+                                input_content=tag_prompt,
+                                input_image_path=image_path
+                            )
+                            
+                            if tags:
+                                # 保存标签到文件
+                                os.makedirs(os.path.dirname(txt_file_path), exist_ok=True)
+                                with open(txt_file_path, 'w', encoding='utf-8') as f:
+                                    f.write(tags)
+                                results.append(f"✅ 成功: {os.path.basename(image_path)} → {os.path.basename(txt_file_path)}")
+                                success_count += 1
+                            else:
+                                results.append(f"❌ 失败: {os.path.basename(image_path)} - 模型返回空结果")
+                                failed_count += 1
+                            
+                        except Exception as e:
+                            results.append(f"❌ 错误: {os.path.basename(image_path)} - {str(e)}")
+                            failed_count += 1
+                    
+                    # 生成总结
+                    summary = f"批量处理完成: 成功 {success_count} 个, 失败 {failed_count} 个\n"
+                    return summary + "\n".join(results)
+                
                 # 聊天事件绑定
                 chat_inputs = [chat_message, chat_history, vision_model, language_model, 
                               model_type, upload_method, image_input, multi_images_input, 
@@ -410,6 +556,11 @@ def vision_chat_tab():
                 chat_message.submit(on_chat, inputs=chat_inputs, outputs=chat_outputs)
                 submit_button.click(on_chat, inputs=chat_inputs, outputs=chat_outputs)
                 clear_button.click(lambda: [], outputs=[chat_history])
+                
+                # 批量处理事件绑定
+                batch_inputs = [batch_image_dir, batch_tag_prompt, vision_model, ollama_host, ollama_timeout]
+                batch_outputs = [batch_result]
+                batch_start_btn.click(batch_process_images, inputs=batch_inputs, outputs=batch_outputs)
                 
                 # 上传方式切换事件
                 def switch_upload(method):
